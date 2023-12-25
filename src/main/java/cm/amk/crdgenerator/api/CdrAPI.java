@@ -21,14 +21,14 @@ public class CdrAPI {
     private final CrdService crdService;
 
     @GetMapping("/cdr")
-    public String crd(Model model) {
+    public String crd() {
         return "cdr";
     }
 
     @PostMapping(value = "/cdr-upload")
     public String generate(Model model,
-                           @RequestParam(value = "file", required = true) MultipartFile file,
-                           @RequestParam(value = "quotient", required = true, defaultValue = "1") BigDecimal quotient) {
+                           @RequestParam(value = "file") MultipartFile file,
+                           @RequestParam(value = "quotient", defaultValue = "1") BigDecimal quotient) {
         try {
             if (!CsvHelper.hasCSVFormat(file)) {
                 model.addAttribute("responseMessage", ResponseMessage.builder().success(false).message("Fichier CSV invalide: " + file.getOriginalFilename() + "!").build());

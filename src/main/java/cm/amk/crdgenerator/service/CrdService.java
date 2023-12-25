@@ -23,6 +23,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -43,24 +44,21 @@ public class CrdService {
     public List<Crd> read(MultipartFile file) {
 
         try {
-            List<Crd> datas = CsvHelper.csvToData(file.getInputStream());
-            return datas;
+            return CsvHelper.csvToData(file.getInputStream());
         } catch (IOException e) {
             throw new RuntimeException("fail to read csv data: " + e.getMessage());
         }
     }
 
     public ByteArrayInputStream write(MultipartFile file, BigDecimal quotient) {
-        List<Crd> datas = read(file);
-        ByteArrayInputStream csvData = CsvHelper.dataToCSV(datas, quotient);
-        return csvData;
+        return CsvHelper.dataToCSV(read(file), quotient);
     }
 
     public String saveFile(MultipartFile file, InputStreamResource resultFile)  {
         //copy file to the target location (Replace existing image with the same image name
         Path targetLocation;
         try{
-            String fileName = file.getOriginalFilename().replace(" ", "_")
+            String fileName = Objects.requireNonNull(file.getOriginalFilename()).replace(" ", "_")
                     .replace(".csv", "_") + LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMddyyyy_HHmmss")) + ".csv";
             targetLocation = this.storagePath.resolve(fileName);
 

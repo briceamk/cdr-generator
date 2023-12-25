@@ -1,0 +1,37 @@
+<!Doctype html>
+<html lang="en"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{template}">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Charger le fichier ZIP ou Excel</title>
+    </head>
+    <body>
+        <div layout:fragment="content">
+            <div class="row mt-5">
+                <div class="col-3"></div>
+                <div class="col-6">
+                    <div class="card text-white  mb-3">
+                        <div class="card-header bg-primary text-center">Charger le fichier ZIP ou Excel</div>
+                        <div class="card-body">
+                            <form action="/facture-upload" method="post" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <label for="quotient">Quotient</label>
+                                    <input type="text" id="quotient" name="quotient" class="form-control" required placeholder="Entrez le quotient...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="file">Fichier a traiter</label>
+                                    <input type="file" id="file" name="file" class="form-control-file border"  required>
+                                </div>
+
+                                <button type="submit" class="btn btn-success" >Charge le fichier</button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-3"></div>
+            </div>
+        </div>
+    </body>
+</html>

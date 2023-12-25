@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+                     xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+    <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" href="webjars/bootstrap/5.3.2/css/bootstrap.min.css">
+        <title>Title</title>
+    </head>
+    <body>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <a class="navbar-brand" href="/">SKV- CRD Generator</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    <li  th:class="${#contextPath == 'crd'? 'nav-item active': 'nav-item'}">
+                        <a class="nav-link" href="/cdr">CDR</a>
+                    </li>
+                    <li th:class="${#contextPath == 'skv'? 'nav-item active': 'nav-item'}">
+                        <a class="nav-link" href="/facture">Facture</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        <div class="container">
+            <div  layout:fragment="content"></div>
+        </div>
+    </body>
+</html>

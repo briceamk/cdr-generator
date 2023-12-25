@@ -1,0 +1,35 @@
+<!Doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{template}">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Bienvenue</title>
+    </head>
+    <body>
+       <div layout:fragment="content">
+           <div class="row mt-5">
+               <div class="col-3"></div>
+               <div class="col-6">
+                   <div class="alert alert-danger text-center" role="alert" th:if="${!responseMessage.success} ">
+                       <span th:text="${responseMessage.message}"/>
+                   </div>
+
+                   <p class="text-center mt-5" th:if="${!responseMessage.success}">
+                       <a class="btn btn-primary" href="/facture"> Retour au Formulaire</a>
+                   </p>
+
+                   <div class="alert alert-success text-center" role="alert" th:if="${responseMessage.success}">
+                       <span th:text="${responseMessage.message}"/>
+                   </div>
+
+                   <p class="text-center mt-5" th:if="${responseMessage.success}">
+                       <a class="btn btn-success" th:href="${'/facture-download/' + filename}">Telecharger le fichier</a>
+                   </p>
+
+               </div>
+               <div class="col-3"></div>
+           </div>
+       </div>
+    </body>
+</html>

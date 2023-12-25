@@ -1,0 +1,23 @@
+<!Doctype html>
+<html lang="en"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{template}">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Bienvenue</title>
+    </head>
+    <body>
+       <div layout:fragment="content">
+           <div class="jumbotron mt-5">
+               <h1 class="display-4">Bienvenue dans cet utilitaire</h1>
+               <p class="lead"></p>
+               <hr class="my-4">
+               <p></p>
+               <div class="text-center">
+                   <a class="btn btn-success btn-lg" href="/cdr" role="button">CDR</a>
+                   <a class="btn btn-warning btn-lg" href="/facture" role="button">Facture</a>
+               </div>
+           </div>
+       </div>
+    </body>
+</html>

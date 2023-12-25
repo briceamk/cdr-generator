@@ -9,9 +9,6 @@ public class ZipHelper {
     public static final String TYPE_MACOS = "application/zip";
     public static boolean hasZipFormat(MultipartFile file) {
         log.info("***************************: {}", file.getContentType());
-        if(!TYPE_WINDOWS.equals(file.getContentType()) && !TYPE_MACOS.equals(file.getContentType())) {
-            return false;
-        }
-        return true;
+        return TYPE_WINDOWS.equals(file.getContentType()) || TYPE_MACOS.equals(file.getContentType());
     }
 }

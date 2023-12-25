@@ -3,7 +3,7 @@ package cm.amk.crdgenerator.service;
 import cm.amk.crdgenerator.config.FileStorageConfig;
 import cm.amk.crdgenerator.exception.FileStorageException;
 import cm.amk.crdgenerator.exception.ResourceNotFoundException;
-import cm.amk.crdgenerator.model.Crd;
+import cm.amk.crdgenerator.model.CsvFileContent;
 import cm.amk.crdgenerator.util.CsvHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
@@ -22,7 +22,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -41,17 +40,17 @@ public class CrdService {
         }
     }
 
-    public List<Crd> read(MultipartFile file) {
+    public CsvFileContent read(MultipartFile file) {
 
         try {
-            return CsvHelper.csvToData(file.getInputStream());
+            return CsvHelper.fromCsvToCrd(file.getInputStream());
         } catch (IOException e) {
             throw new RuntimeException("fail to read csv data: " + e.getMessage());
         }
     }
 
     public ByteArrayInputStream write(MultipartFile file, BigDecimal quotient) {
-        return CsvHelper.dataToCSV(read(file), quotient);
+        return CsvHelper.fromCrdToCsv(read(file), quotient);
     }
 
     public String saveFile(MultipartFile file, InputStreamResource resultFile)  {

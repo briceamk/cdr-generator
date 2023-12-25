@@ -31,12 +31,12 @@ public class FactureAPI {
                            @RequestParam(value = "file", required = true) MultipartFile file,
                            @RequestParam(value = "quotient", required = true, defaultValue = "1") BigDecimal quotient) {
         try {
-            if (!ExcelHelper.hasExcelFormat(file) && !ZipHelper.hasZipFormat(file)) {
+            if (!ExcelHelper.isExcelFormat(file) && !ZipHelper.hasZipFormat(file)) {
                 model.addAttribute("responseMessage", ResponseMessage.builder().success(false).message("Fichier zip ou excel invalide: " + file.getOriginalFilename() + "!").build());
                 return "facture_download";
             }
             String filename="";
-            if(ExcelHelper.hasExcelFormat(file)){
+            if(ExcelHelper.isExcelFormat(file)){
                 filename = factureService.processExcelFile(file,quotient);
             }
             else {

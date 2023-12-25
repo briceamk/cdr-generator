@@ -30,7 +30,7 @@ public class CdrAPI {
                            @RequestParam(value = "file") MultipartFile file,
                            @RequestParam(value = "quotient", defaultValue = "1") BigDecimal quotient) {
         try {
-            if (!CsvHelper.hasCSVFormat(file)) {
+            if (!CsvHelper.isCSVFormat(file)) {
                 model.addAttribute("responseMessage", ResponseMessage.builder().success(false).message("Fichier CSV invalide: " + file.getOriginalFilename() + "!").build());
                 return "cdr_download";
             }

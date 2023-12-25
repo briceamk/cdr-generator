@@ -10,11 +10,8 @@ public class ExcelHelper {
     public static final String TYPE2 = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public static final String TYPE3 = "application/octet-stream";
 
-    public static boolean hasExcelFormat(MultipartFile file) {
+    public static boolean isExcelFormat(MultipartFile file) {
         log.info("***************************: {}", file.getContentType());
-        if(!TYPE1.equals(file.getContentType()) && !TYPE2.equals(file.getContentType()) && !TYPE3.equals(file.getContentType())) {
-            return false;
-        }
-        return true;
+        return TYPE1.equals(file.getContentType()) || TYPE2.equals(file.getContentType()) || TYPE3.equals(file.getContentType());
     }
 }

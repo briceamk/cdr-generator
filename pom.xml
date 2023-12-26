@@ -10,12 +10,14 @@
     </parent>
     <groupId>cm.amk</groupId>
     <artifactId>crd-generator</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>crd-generator</name>
     <description>Demo project for Spring Boot</description>
 
     <properties>
         <java.version>21</java.version>
+        <app.image.name>crd-generator</app.image.name>
+        <app.image.owner>ambaindji</app.image.owner>
     </properties>
 
     <dependencies>
@@ -78,6 +80,32 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <from>
+                        <image>openjdk:21</image>
+                    </from>
+                    <container>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                    </container>
+                    <to>
+                        <image>${app.image.owner}/${app.image.name}:${project.version}</image>
+                    </to>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

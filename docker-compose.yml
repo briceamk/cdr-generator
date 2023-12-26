@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  crd-generator:
+    image: ambaindji/crd-generator:1.0.0
+    container_name: crd-generator
+    hostname: crd-generator
+    restart: always
+    ports:
+      - '8045:8080'

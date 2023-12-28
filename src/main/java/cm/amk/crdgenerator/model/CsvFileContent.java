@@ -17,15 +17,12 @@ import java.util.List;
 public class CsvFileContent {
 
     public static String[] REQUIRED_HEADERS = {
-            "originator_name",
-            "originator_address",
             "connect_time1",
             "accounting_time",
-            "bnumber",
-            "anumber",
             "minute_length",
             "price",
-            "cost"
+            "cost",
+            "length"
     };
     private List<Crd> requiredCrdValues;
     private List<String> nonRequiredValues;

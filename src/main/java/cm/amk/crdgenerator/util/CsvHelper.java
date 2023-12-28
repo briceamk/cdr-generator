@@ -20,8 +20,9 @@ import java.util.stream.Stream;
 @Slf4j
 public class CsvHelper {
 
-    public static String TYPE1 = "text/csv";
-    public static String TYPE2= "application/vnd.ms-excel";
+    private static final char DELIMITER = ';';
+    private static String TYPE1 = "text/csv";
+    private static String TYPE2= "application/vnd.ms-excel";
 
     public static boolean isCSVFormat(MultipartFile file) {
         return TYPE1.equals(file.getContentType()) || TYPE2.equals(file.getContentType());
@@ -30,7 +31,7 @@ public class CsvHelper {
     public static CsvFileContent fromCsvToCrd(InputStream is) {
         try (BufferedReader fileReader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
              CSVParser csvParser = new CSVParser(fileReader,
-                     CSVFormat.newFormat(';').withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
+                     CSVFormat.EXCEL.withDelimiter(DELIMITER).withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim())) {
 
             List<Crd> crdList = new ArrayList<>();
             List<String> otherLine = new ArrayList<>();
@@ -76,7 +77,7 @@ public class CsvHelper {
     }
 
     public static ByteArrayInputStream fromCrdToCsv(CsvFileContent csvFileContent, BigDecimal quotient) {
-        final CSVFormat format = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.MINIMAL);
+        final CSVFormat format = CSVFormat.EXCEL.withDelimiter(DELIMITER).withQuoteMode(QuoteMode.MINIMAL);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
         try {
@@ -104,7 +105,7 @@ public class CsvHelper {
                         .multiply(crd.getPrice())
                         .divide(new BigDecimal(60), RoundingMode.HALF_UP).setScale(5, RoundingMode.HALF_UP );
                 BigDecimal length = BigDecimal.valueOf(crd.getLength()).multiply(quotient);
-                List<String> line = new ArrayList<String>(List.of(
+                List<String> line = new ArrayList<>(List.of(
                         crd.getConnectTime1().format(formatter),
                         connectTime1.format(formatter),
                         String.valueOf(connectTime1Duration),

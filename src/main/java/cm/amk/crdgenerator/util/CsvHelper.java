@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -21,8 +22,8 @@ import java.util.stream.Stream;
 public class CsvHelper {
 
     private static final char DELIMITER = ';';
-    private static String TYPE1 = "text/csv";
-    private static String TYPE2= "application/vnd.ms-excel";
+    private static final String TYPE1 = "text/csv";
+    private static final String TYPE2= "application/vnd.ms-excel";
 
     public static boolean isCSVFormat(MultipartFile file) {
         return TYPE1.equals(file.getContentType()) || TYPE2.equals(file.getContentType());
@@ -77,7 +78,7 @@ public class CsvHelper {
     }
 
     public static ByteArrayInputStream fromCrdToCsv(CsvFileContent csvFileContent, BigDecimal quotient) {
-        final CSVFormat format = CSVFormat.EXCEL.withDelimiter(DELIMITER).withQuoteMode(QuoteMode.MINIMAL);
+        final CSVFormat format = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.MINIMAL);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
         try {
@@ -91,27 +92,24 @@ public class CsvHelper {
             int initialIndexRequireValue = 0;
             int lastIndexNonRequiredValue = csvFileContent.getNonRequiredHeader().size();
             for (Crd crd : csvFileContent.getRequiredCrdValues()) {
-                BigDecimal MinuteLengthComputed = crd.getMinuteLength().multiply(quotient).setScale(3, RoundingMode.HALF_UP);
-                LocalDateTime connectTime1 = crd.getConnectTime1()
-                        .plusSeconds(MinuteLengthComputed.longValue())
-                        .plusNanos(
-                                (MinuteLengthComputed
-                                        .subtract(new BigDecimal(MinuteLengthComputed.toBigInteger())).setScale(3, RoundingMode.HALF_UP))
-                                        .multiply(new BigDecimal(1000000000)).longValue());
-                BigDecimal connectTime1Duration = BigDecimal.valueOf(ChronoUnit.MILLIS.between(crd.getConnectTime1(), connectTime1))
-                        .divide(new BigDecimal(1000), RoundingMode.HALF_UP)
-                        .setScale(0, RoundingMode.HALF_UP);
-                BigDecimal revenue = MinuteLengthComputed
+
+                BigDecimal newMinuteLength = crd.getMinuteLength().multiply(quotient).setScale(10, RoundingMode.UP);
+                BigDecimal newLength = newMinuteLength
+                        .multiply(BigDecimal.valueOf(60)).setScale(0, RoundingMode.UP);
+
+                LocalDateTime newAccountingTime = getNewAccountingTime(crd.getConnectTime1(), newMinuteLength);
+                BigDecimal newCost = newLength
                         .multiply(crd.getPrice())
-                        .divide(new BigDecimal(60), RoundingMode.HALF_UP).setScale(5, RoundingMode.HALF_UP );
-                BigDecimal length = BigDecimal.valueOf(crd.getLength()).multiply(quotient);
+                        .divide(BigDecimal.valueOf(60), 10, RoundingMode.UP)
+                        .setScale(10, RoundingMode.UP );
+
                 List<String> line = new ArrayList<>(List.of(
                         crd.getConnectTime1().format(formatter),
-                        connectTime1.format(formatter),
-                        String.valueOf(connectTime1Duration),
+                        newAccountingTime.format(formatter),
+                        String.valueOf(newMinuteLength),
                         String.valueOf(crd.getPrice()),
-                        String.valueOf(revenue),
-                        String.valueOf(length)
+                        String.valueOf(newCost),
+                        String.valueOf(newLength)
                 ));
 
                 for(int i = initialIndexRequireValue; i < lastIndexNonRequiredValue; i++) {
@@ -132,4 +130,15 @@ public class CsvHelper {
             throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
         }
     }
+
+    private static LocalDateTime getNewAccountingTime(LocalDateTime connectTime1, BigDecimal newMinuteLength) {
+
+        return connectTime1
+                .plusMinutes(newMinuteLength.toBigInteger().longValue())
+                .plusSeconds(newMinuteLength
+                        .subtract(new BigDecimal(newMinuteLength.toBigInteger()))
+                        .multiply(BigDecimal.valueOf(60))
+                        .setScale(0, RoundingMode.UP).longValue());
+    }
 }
+

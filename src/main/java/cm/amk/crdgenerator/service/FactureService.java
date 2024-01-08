@@ -4,10 +4,7 @@ import cm.amk.crdgenerator.config.FileStorageConfig;
 import cm.amk.crdgenerator.exception.FileStorageException;
 import cm.amk.crdgenerator.exception.ResourceNotFoundException;
 import org.apache.poi.EncryptedDocumentException;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -85,8 +82,10 @@ public class FactureService {
             //Update value in second sheet
             Sheet sheet1 = workbook.getSheetAt(1);
             Iterator<Row> rowIt = sheet1.iterator();
-            BigDecimal totalMinutes = new BigDecimal("0");
+            BigDecimal totalLength = new BigDecimal("0");
             BigDecimal totalAmount = new BigDecimal("0");
+            var currencyUnit = "$";
+            var minuteUnit = "min.";
             int lastRowIndex = sheet1.getLastRowNum();
             String currency = "";
             while(rowIt.hasNext()) {
@@ -110,7 +109,7 @@ public class FactureService {
                             newValue = newValue.multiply(quotient);
                             if(cell.getRowIndex() == lastRowIndex) {
                                 if(cell.getColumnIndex() == 5){
-                                    cell.setCellValue(String.format(Locale.US, "%,.3f",totalMinutes.setScale(3, RoundingMode.HALF_UP).doubleValue()));
+                                    cell.setCellValue(String.format(Locale.US, "%,.3f",totalLength.setScale(3, RoundingMode.HALF_UP).doubleValue()));
                                     //cell.setCellStyle(style);
                                 }
                                 else{
@@ -123,7 +122,7 @@ public class FactureService {
                                 //cell.setCellStyle(style);
 
                                 if(cell.getColumnIndex() == 5)
-                                    totalMinutes = totalMinutes.add(newValue);
+                                    totalLength = totalLength.add(newValue);
 
                                 else
                                     totalAmount = totalAmount.add(newValue);
@@ -135,12 +134,18 @@ public class FactureService {
             }
 
             // Update value in first sheet
-            currency = "$";
+
             Sheet sheet0 = workbook.getSheetAt(0);
+            //update total length
+            Cell totalLengthInvoiceSheet = sheet0.getRow(14).getCell(2);
+            totalLengthInvoiceSheet.setCellValue(String.format(Locale.US, "%,.3f %s", totalLength, minuteUnit));
+            //format amount for subtotal and total amount
+            String format = String.format(Locale.US, "%,.3f %s", totalAmount.setScale(3, RoundingMode.HALF_UP).doubleValue(), currencyUnit);
+            //Update subtotal amount
             Cell subTotalCell = sheet0.getRow(14).getCell(5);
-            Cell totalCell = sheet0.getRow(15).getCell(5);
-            String format = String.format(Locale.US, "%,.3f %s", totalAmount.setScale(3, RoundingMode.HALF_UP).doubleValue(), currency);
             subTotalCell.setCellValue(format);
+            //Update total amount
+            Cell totalCell = sheet0.getRow(15).getCell(5);
             totalCell.setCellValue(format);
             //totalCell.setCellStyle(currencyStyle);
             //TODO Remove not show in new invoice Cell totalDueCell = sheet0.getRow(21).getCell(1);

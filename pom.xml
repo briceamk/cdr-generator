@@ -10,7 +10,7 @@
     </parent>
     <groupId>cm.amk</groupId>
     <artifactId>crd-generator</artifactId>
-    <version>1.0.12</version>
+    <version>1.1.0</version>
     <name>crd-generator</name>
     <description>Demo project for Spring Boot</description>
 

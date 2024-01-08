@@ -4,7 +4,10 @@ import cm.amk.crdgenerator.config.FileStorageConfig;
 import cm.amk.crdgenerator.exception.FileStorageException;
 import cm.amk.crdgenerator.exception.ResourceNotFoundException;
 import org.apache.poi.EncryptedDocumentException;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -55,7 +58,7 @@ public class FactureService {
         //copy file to the target location (Replace existing image with the same image name
         Path targetLocation;
         try{
-            String filename = file.getOriginalFilename();
+            String filename = Objects.requireNonNull(file.getOriginalFilename());
             targetLocation = this.storagePath.resolve(filename);
 
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
@@ -66,18 +69,18 @@ public class FactureService {
     }
 
     public String processZipFile(MultipartFile file, BigDecimal quotient) throws IOException {
-        String originalFilename = file.getOriginalFilename();
+        String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
         Map<String, Object> map = unzipFile(file);
         List<String> fileList = (List) map.get("fileList");
         File destDir = (File) map.get("destDir");
-        fileList.stream().forEach(filePath -> transformExcelFile(filePath, quotient));
-        String zipFileName = zipFiles(fileList, destDir, originalFilename);
-        return zipFileName;
+        fileList.forEach(filePath -> transformExcelFile(filePath, quotient));
+        return zipFiles(fileList, destDir, originalFilename);
     }
 
     private void transformExcelFile(String filename, BigDecimal quotient) {
         try {
             FileInputStream inputStream = new FileInputStream(new File(filename));
+            //XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
             Workbook workbook = WorkbookFactory.create(inputStream);
             //Update value in second sheet
             Sheet sheet1 = workbook.getSheetAt(1);
@@ -92,20 +95,21 @@ public class FactureService {
                 Iterator<Cell> cellIterator = row.cellIterator();
                 while (cellIterator.hasNext()) {
                     Cell cell = cellIterator.next();
-                    if(cell.getRowIndex() != 0)  {
-                        if((cell.getColumnIndex() == 2 || cell.getColumnIndex() == 4)){
+                    if(cell.getRowIndex() > 1)  {
+                        if((cell.getColumnIndex() == 5 || cell.getColumnIndex() == 7)){
                             String cellValue = cell.toString().replaceAll("\\s","").replace(",","");
-                            if(cell.getRowIndex() == lastRowIndex && cell.getColumnIndex() == 4) {
+                            /*TODO currency is not present in total in new invoice
+                            if(cell.getRowIndex() == lastRowIndex && cell.getColumnIndex() == 7) {
                                 currency = cellValue.substring(0, 3);
                                 cellValue = cellValue.replace(currency, "");
-                            }
+                            }*/
                             if(cellValue.startsWith(".")) {
                                 cellValue = "0" +cellValue;
                             }
                             BigDecimal newValue = new BigDecimal(cellValue);
                             newValue = newValue.multiply(quotient);
                             if(cell.getRowIndex() == lastRowIndex) {
-                                if(cell.getColumnIndex() == 2){
+                                if(cell.getColumnIndex() == 5){
                                     cell.setCellValue(String.format(Locale.US, "%,.3f",totalMinutes.setScale(3, RoundingMode.HALF_UP).doubleValue()));
                                     //cell.setCellStyle(style);
                                 }
@@ -118,7 +122,7 @@ public class FactureService {
                                 cell.setCellValue(String.format(Locale.US, "%,.3f",newValue.setScale(3, RoundingMode.HALF_UP).doubleValue()));
                                 //cell.setCellStyle(style);
 
-                                if(cell.getColumnIndex() == 2)
+                                if(cell.getColumnIndex() == 5)
                                     totalMinutes = totalMinutes.add(newValue);
 
                                 else
@@ -131,12 +135,16 @@ public class FactureService {
             }
 
             // Update value in first sheet
+            currency = "$";
             Sheet sheet0 = workbook.getSheetAt(0);
-            Cell totalCell = sheet0.getRow(19).getCell(1);
-            totalCell.setCellValue(currency + " " +String.format(Locale.US, "%,.3f",totalAmount.setScale(3, RoundingMode.HALF_UP).doubleValue()));
+            Cell subTotalCell = sheet0.getRow(14).getCell(5);
+            Cell totalCell = sheet0.getRow(15).getCell(5);
+            String format = String.format(Locale.US, "%,.3f %s", totalAmount.setScale(3, RoundingMode.HALF_UP).doubleValue(), currency);
+            subTotalCell.setCellValue(format);
+            totalCell.setCellValue(format);
             //totalCell.setCellStyle(currencyStyle);
-            Cell totalDueCell = sheet0.getRow(21).getCell(1);
-            totalDueCell.setCellValue(currency + " " +String.format(Locale.US, "%,.3f",totalAmount.setScale(3, RoundingMode.HALF_UP).doubleValue()));
+            //TODO Remove not show in new invoice Cell totalDueCell = sheet0.getRow(21).getCell(1);
+            //TODO Remove not show in new invoice  totalDueCell.setCellValue(currency + " " +String.format(Locale.US, "%,.3f",totalAmount.setScale(3, RoundingMode.HALF_UP).doubleValue()));
             //totalDueCell.setCellStyle(currencyStyle);
 
             inputStream.close();
@@ -216,10 +224,10 @@ public class FactureService {
     private List<String> getFileList(File destDir) {
         List<String> fileList = new ArrayList<>();
         File dir = destDir;
-        if(dir.listFiles().length == 1 && !dir.listFiles()[0].isFile()) {
-            dir = dir.listFiles()[0];
+        if(Objects.requireNonNull(dir.listFiles()).length == 1 && !Objects.requireNonNull(dir.listFiles())[0].isFile()) {
+            dir = Objects.requireNonNull(dir.listFiles())[0];
         }
-        for(File file: dir.listFiles()) {
+        for(File file: Objects.requireNonNull(dir.listFiles())) {
             if(file.isFile()) {
                 fileList.add(dir.toPath().resolve(file.toString()).toString());
             }
@@ -231,7 +239,7 @@ public class FactureService {
         //copy file to the target location (Replace existing image with the same image name
         Path targetLocation;
         try{
-            String fileName = file.getOriginalFilename().replace(" ", "_")
+            String fileName = Objects.requireNonNull(file.getOriginalFilename()).replace(" ", "_")
                     .replace(".zip", "_") + LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMddyyyy_HHmmss")) + ".zip";
             targetLocation = this.storagePath.resolve(fileName);
 

@@ -99,9 +99,7 @@ public class CsvHelper {
 
                 LocalDateTime newAccountingTime = getNewAccountingTime(crd.getConnectTime1(), newMinuteLength);
                 BigDecimal newCost = newLength
-                        .multiply(crd.getPrice())
-                        .divide(BigDecimal.valueOf(60), 10, RoundingMode.UP)
-                        .setScale(10, RoundingMode.UP );
+                        .multiply(newMinuteLength);
 
                 List<String> line = new ArrayList<>(List.of(
                         crd.getConnectTime1().format(formatter),

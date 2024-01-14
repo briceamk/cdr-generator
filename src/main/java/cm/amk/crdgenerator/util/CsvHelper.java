@@ -8,14 +8,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -98,8 +98,7 @@ public class CsvHelper {
                         .multiply(BigDecimal.valueOf(60)).setScale(0, RoundingMode.UP);
 
                 LocalDateTime newAccountingTime = getNewAccountingTime(crd.getConnectTime1(), newMinuteLength);
-                BigDecimal newCost = newLength
-                        .multiply(newMinuteLength);
+                BigDecimal newCost = crd.getPrice().multiply(newMinuteLength);
 
                 List<String> line = new ArrayList<>(List.of(
                         crd.getConnectTime1().format(formatter),

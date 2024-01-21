@@ -76,7 +76,7 @@ public class FactureService {
 
     private void transformExcelFile(String filename, BigDecimal quotient) {
         try {
-            FileInputStream inputStream = new FileInputStream(new File(filename));
+            FileInputStream inputStream = new FileInputStream(filename);
             //XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
             Workbook workbook = WorkbookFactory.create(inputStream);
             //Update value in second sheet

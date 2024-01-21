@@ -1,0 +1,48 @@
+<!Doctype html>
+<html lang="en"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{template}">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Pointage</title>
+    </head>
+    <body>
+    <div layout:fragment="content">
+        <div class="row mt-5">
+            <div class="col-3"></div>
+            <div class="col-6">
+                <div class="card text-white  mb-3">
+                    <div class="card-header bg-primary text-center">Charger le fichier de pointage</div>
+                    <div class="card-body">
+                        <form action="/pointage-upload" method="post" enctype="multipart/form-data">
+                            <div class="mb-3 row">
+                                <label for="date_debut" class="text-black col-sm-2 col-form-label">Période - Début</label>
+                                <div class="col-sm-10">
+                                    <input type="date" id="date_debut" name="date_debut" class="form-control" required placeholder="Entrez la date de début de periode...">
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label for="date_fin" class="text-black col-sm-2 col-form-label">Période - Fin</label>
+                                <div class="col-sm-10">
+                                    <input type="date" id="date_fin" name="date_fin" class="form-control" required placeholder="Entrez la date de fin de periode...">
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <div class="col-sm-12">
+                                    <input type="file" id="file" name="file" class="form-control"  required>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary text-white bold" >Traiter le fichier</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-3"></div>
+        </div>
+    </div>
+
+    </body>
+</html>

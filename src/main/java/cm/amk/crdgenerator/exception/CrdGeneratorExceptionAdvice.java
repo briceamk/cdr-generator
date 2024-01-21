@@ -34,4 +34,10 @@ public class CrdGeneratorExceptionAdvice extends ResponseEntityExceptionHandler 
                                                                                  WebRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseMessage.builder().success(false).message(e.getLocalizedMessage()).build());
     }
+
+    @ExceptionHandler(PointageException.class)
+    protected final ResponseEntity<ResponseMessage> handlePointageException(PointageException e,
+                                                                               WebRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseMessage.builder().success(false).message(e.getLocalizedMessage()).build());
+    }
 }

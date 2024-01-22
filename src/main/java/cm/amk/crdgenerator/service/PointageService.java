@@ -40,16 +40,17 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 @Service
 public class PointageService {
 
-    public static final String ZERO_TIME = "00:00:00";
-    public static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
-    public static final DateTimeFormatter FILE_NAME_TIME_FORMAT = DateTimeFormatter.ofPattern("HHmmss");
-    public static final String DEFAULT_CHECKOUT_TIME = "18:00:00";
-    public static final String DEFAULT_CHECKIN_TIME = "08:00:00";
-    public static final String MIDDLE_DAY_TIME = "12:00:00";
-    public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    public static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    public static final DateTimeFormatter FILE_DATE_FORMAT = DateTimeFormatter.ofPattern("ddMMyyyy");
-    public static final String PAS_POINTER = "PAS POINTER";
+    private static final String ZERO_TIME = "00:00:00";
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter FILE_NAME_TIME_FORMAT = DateTimeFormatter.ofPattern("HHmmss");
+    private static final String DEFAULT_CHECKOUT_TIME = "18:00:00";
+    private static final String DEFAULT_CHECKIN_TIME = "08:00:00";
+    private static final String MIDDLE_DAY_TIME = "12:00:00";
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter FILE_DATE_FORMAT = DateTimeFormatter.ofPattern("ddMMyyyy");
+    private static final String PAS_POINTER = "PAS POINTER";
+    private static final String JOUR_NON_OUVRABLE = "JOUR NON OUVRABLE";
     private final Path storagePath;
 
     public PointageService(FileStorageConfig fileStorageConfig) {
@@ -69,14 +70,15 @@ public class PointageService {
         validateClosingDays(monthlyScoreIn.getClosingDays(), dateDebut, dateFin);
         List<String> employeeNames = monthlyScoreIn.getPointageIns().stream().map(PointageIn::getName).distinct().toList();
         List<ClosingDay> closingDays = monthlyScoreIn.getClosingDays();
-        ArrayList<LocalDate> openingDays = computeOpenDays(closingDays, dateDebut, dateFin);
+        ArrayList<LocalDate> openingDays = computeOpenDays(dateDebut, dateFin);
         List<MonthlyScoreOut> monthlyScoreOuts = computeMonthlyScoreOut(employeeNames, openingDays, monthlyScoreIn);
 
 
-        return generateMonthlyScoreExcelFile(monthlyScoreOuts, dateDebut, dateFin);
+        return generateMonthlyScoreExcelFile(monthlyScoreOuts, dateDebut, dateFin, closingDays);
     }
 
-    private String generateMonthlyScoreExcelFile(List<MonthlyScoreOut> monthlyScoreOuts, LocalDate dateDebut, LocalDate dateFin) throws IOException {
+    private String generateMonthlyScoreExcelFile(
+            List<MonthlyScoreOut> monthlyScoreOuts, LocalDate dateDebut, LocalDate dateFin, List<ClosingDay> closingDays) throws IOException {
         String filename = String.format("Fichier_Pointage_%s_%s_%s.xlsx",
                 dateDebut.format(FILE_DATE_FORMAT), dateFin.format(FILE_DATE_FORMAT), LocalTime.now().format(FILE_NAME_TIME_FORMAT));
         String fullPathFilename = String.valueOf(this.storagePath.resolve(filename));
@@ -93,8 +95,8 @@ public class PointageService {
             sheet.setColumnWidth(4, 2 * 256);
             sheet.setColumnWidth(5, 13 * 256);
             sheet.setColumnWidth(6, 13 * 256);
-            sheet.setColumnWidth(7, 13 * 256);
-            sheet.setColumnWidth(8, 13 * 256);
+            sheet.setColumnWidth(7, 18 * 256);
+            sheet.setColumnWidth(8, 18 * 256);
             int rowNumber = 0;
             Row row = sheet.createRow(rowNumber);
             row.createCell(HEADER_INDEX[0]).setCellValue(HEADER_NAME[0]);
@@ -115,10 +117,21 @@ public class PointageService {
                 row.createCell(HEADER_INDEX[2]).setCellValue(pointageOut.getCheckTime() != null ? pointageOut.getCheckTime().format(DATE_TIME_FORMAT): "");
                 row.createCell(HEADER_INDEX[3]).setCellValue(pointageOut.getDay().format(DATE_FORMAT));
                 row.createCell(HEADER_INDEX[4]).setCellValue("");
-                row.createCell(HEADER_INDEX[5]).setCellValue(pointageOut.getCheckInTime() != null ? pointageOut.getCheckInTime().format(TIME_FORMAT): "");
-                row.createCell(HEADER_INDEX[6]).setCellValue(pointageOut.getCheckOutTime() != null ? pointageOut.getCheckOutTime().format(TIME_FORMAT): "");
-                row.createCell(HEADER_INDEX[7]).setCellValue(pointageOut.getArrivedAfterTime() != null ? pointageOut.getArrivedAfterTime().format(TIME_FORMAT): pointageOut.getSens().equals(Sens.IN) ? PAS_POINTER : "" );
-                row.createCell(HEADER_INDEX[8]).setCellValue(pointageOut.getDepartureBeforeTime() != null ? pointageOut.getDepartureBeforeTime().format(TIME_FORMAT): pointageOut.getSens().equals(Sens.OUT) ? PAS_POINTER : "");
+
+                Optional<ClosingDay> isClosingDay = closingDays.stream().filter(closingDay -> closingDay.getDate().isEqual(pointageOut.getDay())).findFirst();
+                if (isClosingDay.isEmpty()) {
+                    row.createCell(HEADER_INDEX[5]).setCellValue(pointageOut.getCheckInTime() != null ? pointageOut.getCheckInTime().format(TIME_FORMAT): "");
+                    row.createCell(HEADER_INDEX[6]).setCellValue(pointageOut.getCheckOutTime() != null ? pointageOut.getCheckOutTime().format(TIME_FORMAT): "");
+                    row.createCell(HEADER_INDEX[7]).setCellValue(pointageOut.getArrivedAfterTime() != null ? pointageOut.getArrivedAfterTime().format(TIME_FORMAT): pointageOut.getSens().equals(Sens.IN) ? PAS_POINTER : "" );
+                    row.createCell(HEADER_INDEX[8]).setCellValue(pointageOut.getDepartureBeforeTime() != null ? pointageOut.getDepartureBeforeTime().format(TIME_FORMAT): pointageOut.getSens().equals(Sens.OUT) ? PAS_POINTER : "");
+                } else {
+                    row.createCell(HEADER_INDEX[5]).setCellValue(pointageOut.getCheckInTime() != null ? pointageOut.getCheckInTime().format(TIME_FORMAT): "");
+                    row.createCell(HEADER_INDEX[6]).setCellValue(pointageOut.getCheckOutTime() != null ? pointageOut.getCheckOutTime().format(TIME_FORMAT): "");
+                    row.createCell(HEADER_INDEX[7]).setCellValue(pointageOut.getArrivedAfterTime() != null ? JOUR_NON_OUVRABLE : pointageOut.getSens().equals(Sens.IN) ? JOUR_NON_OUVRABLE : "" );
+                    row.createCell(HEADER_INDEX[8]).setCellValue(pointageOut.getDepartureBeforeTime() != null ? JOUR_NON_OUVRABLE : pointageOut.getSens().equals(Sens.OUT) ? JOUR_NON_OUVRABLE : "");
+                }
+
+
                 formatSensCell(row, HEADER_INDEX, workbook, pointageOut.getSens());
                 rowNumber += 1;
             }
@@ -166,8 +179,15 @@ public class PointageService {
                 cellStyle.setFont(font);
             }
 
+            if(cell.getStringCellValue().equalsIgnoreCase(JOUR_NON_OUVRABLE)) {
+                Font font = cell.getSheet().getWorkbook().createFont();
+                font.setBold(true);
+                font.setColor(IndexedColors.ROYAL_BLUE.index);
+                cellStyle.setFont(font);
+            }
+
             if(headerIndex == 7 || headerIndex == 8) {
-                if(!cell.getStringCellValue().isEmpty() && !cell.getStringCellValue().equals(PAS_POINTER)) {
+                if(!cell.getStringCellValue().isEmpty() && !cell.getStringCellValue().equals(PAS_POINTER) && !cell.getStringCellValue().equals(JOUR_NON_OUVRABLE)) {
                     long durationInMinutes = TimeUnit.SECONDS.toMinutes(
                             LocalTime.parse(cell.getStringCellValue(), TIME_FORMAT).toSecondOfDay());
                     if(durationInMinutes >= 15) {
@@ -215,8 +235,15 @@ public class PointageService {
                 cellStyle.setFont(font);
             }
 
+            if(cell.getStringCellValue().equalsIgnoreCase(JOUR_NON_OUVRABLE)) {
+                Font font = cell.getSheet().getWorkbook().createFont();
+                font.setBold(true);
+                font.setColor(IndexedColors.ROYAL_BLUE.index);
+                cellStyle.setFont(font);
+            }
+
             if(headerIndex == 7 || headerIndex == 8) {
-                if(!cell.getStringCellValue().isEmpty() && !cell.getStringCellValue().equals(PAS_POINTER)) {
+                if(!cell.getStringCellValue().isEmpty() && !cell.getStringCellValue().equals(PAS_POINTER) && !cell.getStringCellValue().equals(JOUR_NON_OUVRABLE)) {
                     long durationInMinutes = TimeUnit.SECONDS.toMinutes(
                             LocalTime.parse(cell.getStringCellValue(), TIME_FORMAT).toSecondOfDay());
                     if(durationInMinutes >= 15) {
@@ -381,16 +408,11 @@ public class PointageService {
             );
     }
 
-    private ArrayList<LocalDate> computeOpenDays(List<ClosingDay> closingDays, LocalDate dateDebut, LocalDate dateFin) {
+    private ArrayList<LocalDate> computeOpenDays(LocalDate dateDebut, LocalDate dateFin) {
         ArrayList<LocalDate> periodes = new ArrayList<>();
         while(!dateDebut.isAfter(dateFin)) {
-            final LocalDate currentDate = dateDebut;
-            Optional<ClosingDay> isClosingDay = closingDays.stream()
-                    .filter(closingDay -> closingDay.getDate().isEqual(currentDate))
-                    .findFirst();
-            if(isClosingDay.isEmpty())
-                periodes.add(currentDate);
-            dateDebut = currentDate.plusDays(1);
+                periodes.add(dateDebut);
+            dateDebut = dateDebut.plusDays(1);
         }
         return periodes;
     }

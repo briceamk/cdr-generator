@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -51,6 +52,29 @@ public class PointageService {
     private static final DateTimeFormatter FILE_DATE_FORMAT = DateTimeFormatter.ofPattern("ddMMyyyy");
     private static final String PAS_POINTER = "PAS POINTER";
     private static final String JOUR_NON_OUVRABLE = "JOUR NON OUVRABLE";
+    private static final List<DeductibleRule> RULES = List.of(
+            DeductibleRule.builder()
+                    .from(900)
+                    .to(3600)
+                    .deductibleHours(3600)
+                    .build(),
+            DeductibleRule.builder()
+                    .from(3601)
+                    .to(7200)
+                    .deductibleHours(7200)
+                    .build(),
+            DeductibleRule.builder()
+                    .from(7201)
+                    .to(10800)
+                    .deductibleHours(10800)
+                    .build(),
+            DeductibleRule.builder()
+                    .from(10801)
+                    .to(14400)
+                    .deductibleHours(14400)
+                    .build()
+    );
+    public static final String TIME_STRING_FORMAT = "%s:00:00";
     private final Path storagePath;
 
     public PointageService(FileStorageConfig fileStorageConfig) {
@@ -85,7 +109,21 @@ public class PointageService {
         FileOutputStream outputStream = new FileOutputStream(fullPathFilename);
         XSSFWorkbook workbook = new XSSFWorkbook();
         String[] HEADER_NAME = {"NAME", "SENS", "POINTAGE", "DATE", "", "ARRIVE", "DEPART", "RETARD", "AVANCE"};
+        String[] HEADER_SUMMARY_NAME = {
+                "NAME",
+                "TOTAL ARRIVE RETARD",
+                "TOTAL DEDUCTIBLE ARRIVE RETARD",
+                "TOTAL DEPART AVANCE ",
+                "TOTAL DEDUCTIBLE DEPART AVANCE",
+                "TOTAL NON POINTE ARRIVE",
+                "TOTAL DEDUCTIBE NON POINTE ARRIVE",
+                "TOTAL NON POINTE DEPART",
+                "TOTAL DEDUCTIBLE NON POINTE DEPART",
+                "TOTAL DEDUCTIBLE GENERAL"
+        };
         Integer[] HEADER_INDEX = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+        Integer[] HEADER_SUMMARY_INDEX = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        List<PointageSummary> pointageSummaries = new ArrayList<>();
         for(MonthlyScoreOut monthlyScoreOut: monthlyScoreOuts) {
             Sheet sheet = workbook.createSheet(monthlyScoreOut.getEmployeeName());
             sheet.setColumnWidth(0, 26 * 256);
@@ -110,6 +148,15 @@ public class PointageService {
             row.createCell(HEADER_INDEX[8]).setCellValue(HEADER_NAME[8]);
             formatHeaderCell(row, HEADER_INDEX, workbook);
             rowNumber += 1;
+            long totalArrivedAfterTime = 0L;
+            long totalDepartureBeforeTime = 0L;
+            int totalNotPointedMorning = 0;
+            int totalNotPointedEvening = 0;
+            int totalDeductibleArrivedAfterTime = 0;
+            int totalDeductibleDepartureBeforeTime =  0;
+            int totalDeductibleNotPointedMorning =  0;
+            int totalDeductibleNotPointedEvening =  0;
+            int totalDeductible =  0;
             for(PointageOut pointageOut: monthlyScoreOut.getPointageOuts()) {
                 row = sheet.createRow(rowNumber);
                 row.createCell(HEADER_INDEX[0]).setCellValue(monthlyScoreOut.getEmployeeName());
@@ -124,23 +171,122 @@ public class PointageService {
                     row.createCell(HEADER_INDEX[6]).setCellValue(pointageOut.getCheckOutTime() != null ? pointageOut.getCheckOutTime().format(TIME_FORMAT): "");
                     row.createCell(HEADER_INDEX[7]).setCellValue(pointageOut.getArrivedAfterTime() != null ? pointageOut.getArrivedAfterTime().format(TIME_FORMAT): pointageOut.getSens().equals(Sens.IN) ? PAS_POINTER : "" );
                     row.createCell(HEADER_INDEX[8]).setCellValue(pointageOut.getDepartureBeforeTime() != null ? pointageOut.getDepartureBeforeTime().format(TIME_FORMAT): pointageOut.getSens().equals(Sens.OUT) ? PAS_POINTER : "");
+                    //We consider only time upper to 15minutes or 900seconds
+                    if(pointageOut.getSens().equals(Sens.IN)) {
+                        if(pointageOut.getArrivedAfterTime() != null) {
+                            long seconds = TimeUnit.SECONDS.toSeconds(pointageOut.getArrivedAfterTime().toSecondOfDay());
+                            totalArrivedAfterTime += seconds >=  900 ? seconds: 0;
+                            int deductibleArrivedAfterTime = seconds >= 900 ? computeDeductibleHours(seconds, RULES) : 0;
+                            totalDeductibleArrivedAfterTime += deductibleArrivedAfterTime;
+                            totalDeductible += deductibleArrivedAfterTime;;
+                        } else {
+                            totalNotPointedMorning += 1;
+                            totalDeductibleNotPointedMorning += 10800;
+                            totalDeductible += 10800;
+                        }
+                    }
+                    if(pointageOut.getSens().equals(Sens.OUT)) {
+                        if(pointageOut.getDepartureBeforeTime() != null) {
+                            long seconds = TimeUnit.SECONDS.toSeconds(pointageOut.getDepartureBeforeTime().toSecondOfDay());
+                            totalDepartureBeforeTime += seconds >=  900 ? seconds: 0;
+                            int deductibleBeforeDepartureTime = seconds >= 900 ? computeDeductibleHours(seconds, RULES) : 0;
+                            totalDeductibleDepartureBeforeTime += deductibleBeforeDepartureTime;
+                            totalDeductible += deductibleBeforeDepartureTime;
+                        } else {
+                            totalNotPointedEvening += 1;
+                            totalDeductibleNotPointedEvening += 10800;
+                            totalDeductible += 10800;
+                        }
+                    }
                 } else {
                     row.createCell(HEADER_INDEX[5]).setCellValue(pointageOut.getCheckInTime() != null ? pointageOut.getCheckInTime().format(TIME_FORMAT): "");
                     row.createCell(HEADER_INDEX[6]).setCellValue(pointageOut.getCheckOutTime() != null ? pointageOut.getCheckOutTime().format(TIME_FORMAT): "");
                     row.createCell(HEADER_INDEX[7]).setCellValue(pointageOut.getArrivedAfterTime() != null ? JOUR_NON_OUVRABLE : pointageOut.getSens().equals(Sens.IN) ? JOUR_NON_OUVRABLE : "" );
                     row.createCell(HEADER_INDEX[8]).setCellValue(pointageOut.getDepartureBeforeTime() != null ? JOUR_NON_OUVRABLE : pointageOut.getSens().equals(Sens.OUT) ? JOUR_NON_OUVRABLE : "");
                 }
-
-
                 formatSensCell(row, HEADER_INDEX, workbook, pointageOut.getSens());
                 rowNumber += 1;
             }
+            pointageSummaries.add(PointageSummary.builder()
+                    .employeeName(monthlyScoreOut.getEmployeeName())
+                    .totalArrivedAfterTime(LocalTime.ofSecondOfDay(totalArrivedAfterTime))
+                    .totalDeductibleArrivedAfterTime(String.format(TIME_STRING_FORMAT, Duration.ofSeconds(totalDeductibleArrivedAfterTime).toHours()))
+                    .totalDepartureBeforeTime(LocalTime.ofSecondOfDay(totalDepartureBeforeTime))
+                    .totalDeductibleDepartureBeforeTime(String.format(TIME_STRING_FORMAT, Duration.ofSeconds(totalDeductibleDepartureBeforeTime).toHours()))
+                    .totalNotPointedMorning(totalNotPointedMorning)
+                    .totalDeductibleNotPointedMorning(String.format(TIME_STRING_FORMAT, Duration.ofSeconds(totalDeductibleNotPointedMorning).toHours()))
+                    .totalNotPointedEvening(totalNotPointedEvening)
+                    .totalDeductibleNotPointedEvening(String.format(TIME_STRING_FORMAT, Duration.ofSeconds(totalDeductibleNotPointedEvening).toHours()))
+                    .totalDeductible(String.format(TIME_STRING_FORMAT, Duration.ofSeconds(totalDeductible).toHours()))
+                    .build());
+
         }
 
+        Sheet sheet = workbook.createSheet("Synthese");
+        sheet.setColumnWidth(0, 26 * 256);
+        sheet.setColumnWidth(1, 20 * 256);
+        sheet.setColumnWidth(2, 20 * 256);
+        sheet.setColumnWidth(3, 20 * 256);
+        sheet.setColumnWidth(4, 20 * 256);
+        sheet.setColumnWidth(5, 20 * 256);
+        sheet.setColumnWidth(6, 20 * 256);
+        sheet.setColumnWidth(7, 20 * 256);
+        sheet.setColumnWidth(8, 20 * 256);
+        sheet.setColumnWidth(9, 20 * 256);
+        int rowNumber = 0;
+        Row row = sheet.createRow(rowNumber);
+        row.createCell(HEADER_SUMMARY_INDEX[0]).setCellValue(HEADER_SUMMARY_NAME[0]);
+        row.createCell(HEADER_SUMMARY_INDEX[1]).setCellValue(HEADER_SUMMARY_NAME[1]);
+        row.createCell(HEADER_SUMMARY_INDEX[2]).setCellValue(HEADER_SUMMARY_NAME[2]);
+        row.createCell(HEADER_SUMMARY_INDEX[3]).setCellValue(HEADER_SUMMARY_NAME[3]);
+        row.createCell(HEADER_SUMMARY_INDEX[4]).setCellValue(HEADER_SUMMARY_NAME[4]);
+        row.createCell(HEADER_SUMMARY_INDEX[5]).setCellValue(HEADER_SUMMARY_NAME[5]);
+        row.createCell(HEADER_SUMMARY_INDEX[6]).setCellValue(HEADER_SUMMARY_NAME[6]);
+        row.createCell(HEADER_SUMMARY_INDEX[7]).setCellValue(HEADER_SUMMARY_NAME[7]);
+        row.createCell(HEADER_SUMMARY_INDEX[8]).setCellValue(HEADER_SUMMARY_NAME[8]);
+        row.createCell(HEADER_SUMMARY_INDEX[9]).setCellValue(HEADER_SUMMARY_NAME[9]);
+        formatSummaryHeaderCell(row, HEADER_SUMMARY_INDEX, workbook);
+        rowNumber += 1;
+        for(PointageSummary pointageSummary: pointageSummaries) {
+            row = sheet.createRow(rowNumber);
+            row.createCell(HEADER_SUMMARY_INDEX[0]).setCellValue(pointageSummary.getEmployeeName());
+            row.createCell(HEADER_SUMMARY_INDEX[1]).setCellValue(pointageSummary.getTotalArrivedAfterTime() != null ? pointageSummary.getTotalArrivedAfterTime().format(TIME_FORMAT): LocalTime.parse("OO:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            row.createCell(HEADER_SUMMARY_INDEX[2]).setCellValue(pointageSummary.getTotalDeductibleArrivedAfterTime() != null ? pointageSummary.getTotalDeductibleArrivedAfterTime(): LocalTime.parse("OO:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            row.createCell(HEADER_SUMMARY_INDEX[3]).setCellValue(pointageSummary.getTotalDepartureBeforeTime() != null ? pointageSummary.getTotalDepartureBeforeTime().format(TIME_FORMAT): LocalTime.parse("OO:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            row.createCell(HEADER_SUMMARY_INDEX[4]).setCellValue(pointageSummary.getTotalDeductibleDepartureBeforeTime() != null ? pointageSummary.getTotalDeductibleDepartureBeforeTime(): LocalTime.parse("OO:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            row.createCell(HEADER_SUMMARY_INDEX[5]).setCellValue(pointageSummary.getTotalNotPointedMorning());
+            row.createCell(HEADER_SUMMARY_INDEX[6]).setCellValue(pointageSummary.getTotalDeductibleNotPointedMorning() != null ? pointageSummary.getTotalDeductibleNotPointedMorning(): LocalTime.parse("00:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            row.createCell(HEADER_SUMMARY_INDEX[7]).setCellValue(pointageSummary.getTotalNotPointedEvening());
+            row.createCell(HEADER_SUMMARY_INDEX[8]).setCellValue(pointageSummary.getTotalDeductibleNotPointedEvening() != null ? pointageSummary.getTotalDeductibleNotPointedEvening(): LocalTime.parse("00:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            row.createCell(HEADER_SUMMARY_INDEX[9]).setCellValue(pointageSummary.getTotalDeductible() != null ? pointageSummary.getTotalDeductible(): LocalTime.parse("00:00:00", TIME_FORMAT).format(TIME_FORMAT));
+            formatSummaryCell(row, HEADER_SUMMARY_INDEX, workbook);
+            rowNumber += 1;
+        }
         workbook.write(outputStream);
         workbook.close();
         outputStream.close();
         return filename;
+    }
+
+    private void formatSummaryCell(Row row, Integer[] HEADER_SUMMARY_INDEX, XSSFWorkbook workbook) {
+        for (Integer headerIndex : HEADER_SUMMARY_INDEX) {
+            Cell cell = row.getCell(headerIndex);
+            CellStyle cellStyle = workbook.createCellStyle();
+            cellStyle.setBorderTop(BorderStyle.MEDIUM);
+            cellStyle.setBorderBottom(BorderStyle.MEDIUM);
+            cellStyle.setBorderRight(BorderStyle.THIN);
+            cellStyle.setBorderLeft(BorderStyle.THIN);
+            cell.setCellStyle(cellStyle);
+        }
+
+    }
+
+    private int computeDeductibleHours(long seconds, List<DeductibleRule> rules) {
+        Optional<DeductibleRule> optionalDeductibleRule = rules.stream()
+                .filter(deductibleRule -> seconds >= deductibleRule.getFrom() && seconds <= deductibleRule.getTo())
+                .findFirst();
+
+        return optionalDeductibleRule.map(DeductibleRule::getDeductibleHours).orElse(0);
     }
 
     private void formatSensCell(Row row, Integer[] HEADER_INDEX, XSSFWorkbook workbook, Sens sens) {
@@ -256,6 +402,25 @@ public class PointageService {
 
             }
 
+            cell.setCellStyle(cellStyle);
+        }
+    }
+
+    private void formatSummaryHeaderCell(Row row, Integer[] HEADER_INDEX, XSSFWorkbook workbook) {
+        row.setHeightInPoints(4 * row.getHeightInPoints());
+        for (Integer headerIndex : HEADER_INDEX) {
+            Cell cell = row.getCell(headerIndex);
+            CellStyle cellStyle = workbook.createCellStyle();
+            cellStyle.setAlignment(HorizontalAlignment.CENTER);
+            cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            cellStyle.setFillForegroundColor(IndexedColors.SEA_GREEN.index);
+            cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font font = cell.getSheet().getWorkbook().createFont();
+            font.setBold(true);
+            font.setColor(IndexedColors.WHITE.index);
+            cellStyle.setFont(font);
+            cellStyle.setBorderRight(BorderStyle.THIN);
+            cellStyle.setWrapText(true);
             cell.setCellStyle(cellStyle);
         }
     }

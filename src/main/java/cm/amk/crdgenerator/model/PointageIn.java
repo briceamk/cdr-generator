@@ -17,9 +17,6 @@ import java.time.LocalDateTime;
 public class PointageIn {
     private String department;
     private String name;
-    private Integer no;
     private LocalDateTime checkTime;
-    private Integer locationId;
-    private Integer idNumber;
     private String verifyCode;
 }

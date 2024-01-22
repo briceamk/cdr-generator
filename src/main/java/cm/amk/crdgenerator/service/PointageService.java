@@ -421,17 +421,17 @@ public class PointageService {
         rowIt1.next();
         while(rowIt1.hasNext()) {
             Row row = rowIt1.next();
-            pointageIns.add(
-                    PointageIn.builder()
-                            .department(row.getCell(0).getStringCellValue())
-                            .name(row.getCell(1).getStringCellValue())
-                            .no(Integer.valueOf(row.getCell(2).getStringCellValue()))
-                            .checkTime(LocalDateTime.parse(row.getCell(3).getStringCellValue(), DATE_TIME_FORMAT))
-                            .locationId(Integer.valueOf(row.getCell(4).getStringCellValue()))
-                            .idNumber(Integer.valueOf(row.getCell(5).getStringCellValue()))
-                            .verifyCode(row.getCell(6).getStringCellValue())
-                            .build()
-            );
+            if(row.getCell(3).getStringCellValue() != null) {
+                pointageIns.add(
+                        PointageIn.builder()
+                                .department(row.getCell(0).getStringCellValue() != null ? row.getCell(0).getStringCellValue(): "")
+                                .name(row.getCell(1).getStringCellValue() != null ? row.getCell(1).getStringCellValue(): "")
+                                .checkTime(LocalDateTime.parse(row.getCell(3).getStringCellValue(), DATE_TIME_FORMAT))
+                                .verifyCode(row.getCell(6).getStringCellValue() != null ? row.getCell(6).getStringCellValue(): "")
+                                .build()
+                );
+            }
+
         }
 
         Sheet sheet2 = workbook.getSheetAt(1);
@@ -439,11 +439,14 @@ public class PointageService {
         ArrayList<ClosingDay> closingDays = new ArrayList<>();
         while(rowIt2.hasNext()) {
             Row row = rowIt2.next();
-            closingDays.add(
-                    ClosingDay.builder()
-                    .date(row.getCell(0).getLocalDateTimeCellValue().toLocalDate())
-                    .build()
-            );
+            if (row.getCell(0).getLocalDateTimeCellValue() != null) {
+                closingDays.add(
+                        ClosingDay.builder()
+                                .date(row.getCell(0).getLocalDateTimeCellValue().toLocalDate())
+                                .build()
+                );
+            }
+
         }
         workbook.close();
 
